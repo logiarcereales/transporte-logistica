@@ -194,6 +194,25 @@ export async function cancelTrip(id: string) {
     return { success: true };
 }
 
+export async function deleteViaje(id: string) {
+    // 1. Eliminar ofertas asociadas (si no hay cascade)
+    await supabaseAdmin.from('oferta').delete().eq('id_viaje', id);
+
+    // 2. Eliminar el viaje
+    const { error } = await supabaseAdmin
+        .from('viaje')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        console.error("Error eliminando viaje:", error);
+        return { error: "Error al eliminar el viaje." };
+    }
+
+    revalidatePath('/admin/viajes');
+    return { success: true };
+}
+
 export async function assignDriver(viajeId: string, choferId: string) {
     // 1. Obtener tarifa base del viaje para usarla como tarifa ofertada
     const { data: viaje } = await supabaseAdmin

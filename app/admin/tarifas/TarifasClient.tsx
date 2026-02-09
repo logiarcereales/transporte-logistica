@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Plus, Pencil, Trash2, Search, DollarSign } from 'lucide-react';
 import { createTarifa, updateTarifa, deleteTarifa } from '../actions';
+import { toast } from 'sonner';
 
 interface Tarifa {
     id: string;
@@ -21,6 +22,10 @@ export default function TarifasClient({ initialTarifas }: { initialTarifas: any[
     const [currentTarifa, setCurrentTarifa] = useState<Partial<Tarifa>>({});
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Modal Delete State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
     const filteredTarifas = tarifas.filter(t =>
         t.km_desde.toString().includes(searchTerm) ||
@@ -39,14 +44,22 @@ export default function TarifasClient({ initialTarifas }: { initialTarifas: any[
         setIsModalOpen(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('¿Seguro que querés borrar esta tarifa?')) return;
+    const openDeleteModal = (id: string) => {
+        setIdToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!idToDelete) return;
         setIsLoading(true);
-        const res = await deleteTarifa(id);
+        const res = await deleteTarifa(idToDelete);
         setIsLoading(false);
+        setIsDeleteModalOpen(false);
+
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success('Tarifa eliminada');
             window.location.reload();
         }
     };
@@ -61,7 +74,7 @@ export default function TarifasClient({ initialTarifas }: { initialTarifas: any[
         const hasta = parseInt(formData.get('km_hasta') as string);
 
         if (desde >= hasta) {
-            alert('El KM Hasta debe ser mayor al KM Desde');
+            toast.error('El KM Hasta debe ser mayor al KM Desde');
             setIsLoading(false);
             return;
         }
@@ -75,8 +88,9 @@ export default function TarifasClient({ initialTarifas }: { initialTarifas: any[
 
         setIsLoading(false);
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success(isEditMode ? 'Tarifa actualizada' : 'Tarifa creada');
             setIsModalOpen(false);
             window.location.reload();
         }
@@ -118,7 +132,7 @@ export default function TarifasClient({ initialTarifas }: { initialTarifas: any[
                                         <button onClick={() => handleOpenEdit(tarifa)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
                                             <Pencil className="w-4 h-4" />
                                         </button>
-                                        <button onClick={() => handleDelete(tarifa.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500 transition-colors">
+                                        <button onClick={() => openDeleteModal(tarifa.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500 transition-colors">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
@@ -179,6 +193,26 @@ export default function TarifasClient({ initialTarifas }: { initialTarifas: any[
                     </div>
                 </form>
             </Modal>
-        </div>
+
+            {/* Modal Confirm Delete */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Eliminar Tarifa">
+                <div className="space-y-4">
+                    <div className="bg-red-50 border border-red-100 text-red-800 p-4 rounded-lg flex items-start gap-3">
+                        <Trash2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <h4 className="font-semibold text-sm">¿Estás seguro de eliminar esta tarifa?</h4>
+                            <p className="text-sm opacity-90 mt-1">Esta acción no se puede deshacer.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleConfirmDelete} isLoading={isLoading} className="bg-red-600 hover:bg-red-700 text-white">
+                            Sí, Eliminar
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+        </div >
     );
 }

@@ -79,7 +79,13 @@ export async function procesarMensajeEntrante(mensaje: any) {
   // 3. Router del MENÚ PRINCIPAL
   if (estado === 'MENU_PRINCIPAL') {
     if (mensaje.type === 'interactive') {
-      const accion = mensaje.interactive.button_reply.id; // Volvemos a botones simples
+      let accion = "";
+
+      if (mensaje.interactive.type === 'button_reply') {
+        accion = mensaje.interactive.button_reply.id;
+      } else if (mensaje.interactive.type === 'list_reply') {
+        accion = mensaje.interactive.list_reply.id;
+      }
 
       // --- ACCIONES DE PRODUCTOR ---
       if (accion === 'ACCION_SOLICITAR') {
@@ -89,14 +95,27 @@ export async function procesarMensajeEntrante(mensaje: any) {
         return await whatsappService.enviarMensaje(telefono, Templates.listaCereales());
       }
 
+      // --- ACCIONES VER VIAJES (Productor / Camionero?) ---
+      if (accion === 'ACCION_VER_VIAJES' || accion === 'ACCION_MIS_VIAJES') {
+        // Obtenemos historial
+        const viajes = await viajeService.obtenerHistorialViajes(perfil.id);
+        return await whatsappService.enviarMensaje(telefono, Templates.historialViajes(viajes));
+      }
+
+      // --- DETALLE DE VIAJE SELECCIONADO ---
+      if (accion.startsWith('VER_VIAJE_')) {
+        const idViaje = accion.replace('VER_VIAJE_', '');
+        const viaje = await viajeService.obtenerViajeCompleto(idViaje);
+        if (viaje) {
+          return await whatsappService.enviarMensaje(telefono, Templates.detalleViaje(viaje));
+        } else {
+          return await whatsappService.enviarMensaje(telefono, Templates.mensajeTexto("⚠️ No pudimos cargar el viaje. Intentalo de nuevo."));
+        }
+      }
+
       // --- ACCIONES DE CAMIONERO ---
       if (accion === 'ACCION_VER_CARGAS') {
         return await whatsappService.enviarMensaje(telefono, Templates.mensajeTexto("🔍 Buscando cargas..."));
-      }
-
-      // --- ACCIONES COMUNES ---
-      if (accion === 'ACCION_VER_VIAJES' || accion === 'ACCION_MIS_VIAJES') {
-        return await whatsappService.enviarMensaje(telefono, Templates.mensajeTexto("🚧 Próximamente: Historial."));
       }
 
       if (accion === 'ACCION_PERFIL') {

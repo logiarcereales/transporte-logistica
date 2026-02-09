@@ -118,3 +118,46 @@ export async function buscarUbicacionPorNombre(nombre: string) {
   if (error) return null;
   return data;
 }
+
+// Obtiene los últimos viajes del productor (excluyendo el que está editando en curso)
+export async function obtenerHistorialViajes(productorId: string) {
+  const { data, error } = await supabase
+    .from('viaje')
+    .select(`
+      id,
+      fecha_carga,
+      cereal,
+      toneladas,
+      estado,
+      origen:ubicacion!id_origen(nombre),
+      destino:ubicacion!id_destino(nombre)
+    `)
+    .eq('id_productor', productorId)
+    .neq('estado', 'EN_CURSO')
+    .order('fecha_carga', { ascending: false })
+    .limit(5);
+
+  if (error) {
+    console.error("Error al obtener historial de viajes:", error);
+    return [];
+  }
+  return data;
+}
+
+export async function obtenerViajeCompleto(viajeId: string | number) {
+  const { data, error } = await supabase
+    .from('viaje')
+    .select(`
+      *,
+      origen:ubicacion!id_origen(*),
+      destino:ubicacion!id_destino(*)
+    `)
+    .eq('id', viajeId)
+    .single();
+
+  if (error) {
+    console.error("Error obteniendo viaje completo:", error);
+    return null;
+  }
+  return data;
+}

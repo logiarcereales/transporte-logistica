@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Filter, MapPin, Calendar, User, Truck, XCircle, CheckCircle, ArrowRight, Clock, Edit2 } from 'lucide-react';
+import { Search, Filter, MapPin, Calendar, User, Truck, XCircle, CheckCircle, ArrowRight, Clock, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { createViaje, cancelTrip, assignDriver, updateTripStatus } from '../actions';
+import { createViaje, cancelTrip, assignDriver, updateTripStatus, deleteViaje } from '../actions';
+import { toast } from 'sonner';
 
 interface Viaje {
     id: string;
@@ -48,6 +49,14 @@ export default function ViajesClient({
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [statusToUpdate, setStatusToUpdate] = useState('');
 
+    // Modal Cancelar State
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [tripToCancelId, setTripToCancelId] = useState<string | null>(null);
+
+    // Modal Eliminar State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [tripToDeleteId, setTripToDeleteId] = useState<string | null>(null);
+
     // Modal Nuevo Viaje State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -72,8 +81,9 @@ export default function ViajesClient({
 
         setIsLoading(false);
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success('Tarifa actualizada correctamente');
             setIsEditTariffModalOpen(false);
             window.location.reload();
         }
@@ -130,19 +140,54 @@ export default function ViajesClient({
 
         setIsLoading(false);
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success('Viaje creado con éxito');
             setIsCreateModalOpen(false);
             window.location.reload();
         }
     };
 
-    const handleCancel = async (id: string) => {
-        if (!confirm('¿Estás seguro de cancelar este viaje?')) return;
+    const openCancelModal = (id: string) => {
+        setTripToCancelId(id);
+        setIsCancelModalOpen(true);
+    };
+
+    const handleConfirmCancel = async () => {
+        if (!tripToCancelId) return;
+
         setIsLoading(true);
-        await cancelTrip(id);
+        const res = await cancelTrip(tripToCancelId);
         setIsLoading(false);
-        window.location.reload();
+        setIsCancelModalOpen(false);
+
+        if (res?.error) {
+            toast.error(res.error);
+        } else {
+            toast.success('Viaje cancelado correctamente');
+            window.location.reload();
+        }
+    };
+
+    const openDeleteModal = (id: string) => {
+        setTripToDeleteId(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!tripToDeleteId) return;
+
+        setIsLoading(true);
+        const res = await deleteViaje(tripToDeleteId);
+        setIsLoading(false);
+        setIsDeleteModalOpen(false);
+
+        if (res?.error) {
+            toast.error(res.error);
+        } else {
+            toast.success('Viaje eliminado correctamente');
+            window.location.reload();
+        }
     };
 
     const openAssignModal = (id: string) => {
@@ -159,8 +204,9 @@ export default function ViajesClient({
         setIsLoading(false);
 
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success('Chofer asignado correctamente');
             setIsAssignModalOpen(false);
             window.location.reload();
         }
@@ -179,8 +225,9 @@ export default function ViajesClient({
         setIsLoading(false);
 
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success('Estado actualizado');
             setIsStatusModalOpen(false);
             window.location.reload();
         }
@@ -343,10 +390,13 @@ export default function ViajesClient({
                                             Estado
                                         </Button>
                                         {viaje.estado !== 'CANCELADO' && (
-                                            <button onClick={() => handleCancel(viaje.id)} className="px-2 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-all" title="Cancelar Viaje">
+                                            <button onClick={() => openCancelModal(viaje.id)} className="px-2 h-8 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded border border-transparent hover:border-orange-100 transition-all" title="Cancelar Viaje">
                                                 <XCircle className="w-4 h-4" />
                                             </button>
                                         )}
+                                        <button onClick={() => openDeleteModal(viaje.id)} className="px-2 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-all" title="Eliminar Viaje">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -527,6 +577,48 @@ export default function ViajesClient({
                         </Button>
                     </div>
                 </form>
+            </Modal>
+            {/* Modal Confirmar Cancelación */}
+            <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} title="Cancelar Viaje">
+                <div className="space-y-4">
+                    <div className="bg-red-50 border border-red-100 text-red-800 p-4 rounded-lg flex items-start gap-3">
+                        <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <h4 className="font-semibold text-sm">¿Estás seguro de cancelar este viaje?</h4>
+                            <p className="text-sm opacity-90 mt-1">Esta acción finalizará el viaje inmediatamente y notificará a las partes involucradas. No se podrá deshacer.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="secondary" onClick={() => setIsCancelModalOpen(false)}>No, volver</Button>
+                        <Button onClick={handleConfirmCancel} isLoading={isLoading} className="bg-red-600 hover:bg-red-700 text-white">
+                            Sí, Cancelar
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Confirmar Eliminación */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Eliminar Viaje permanentemente">
+                <div className="space-y-4">
+                    <div className="bg-red-50 border border-red-100 text-red-800 p-4 rounded-lg flex items-start gap-3">
+                        <Trash2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <h4 className="font-semibold text-sm">¿Estás seguro de eliminar este viaje?</h4>
+                            <p className="text-sm opacity-90 mt-1">
+                                Esta acción borrará el registro de la base de datos permanentemente.
+                                <br />Si solo querés anularlo, usá "Cancelar".
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleConfirmDelete} isLoading={isLoading} className="bg-red-600 hover:bg-red-700 text-white">
+                            Sí, Eliminar
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

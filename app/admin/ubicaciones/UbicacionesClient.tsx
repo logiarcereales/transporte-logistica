@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { MapPin, Plus, Edit2, Trash2, Search, Navigation } from 'lucide-react';
 import { createUbicacion, updateUbicacion, deleteUbicacion } from '../actions';
+import { toast } from 'sonner';
 
 interface Ubicacion {
     id: string;
@@ -23,6 +24,10 @@ export default function UbicacionesClient({ initialUbicaciones }: { initialUbica
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+
+    // Modal Delete State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
     // Form State (could be separate component, but keeping simple here)
     const [formData, setFormData] = useState({
@@ -77,21 +82,30 @@ export default function UbicacionesClient({ initialUbicaciones }: { initialUbica
         setIsLoading(false);
 
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success(editingId ? 'Ubicación actualizada' : 'Ubicación creada correctamente');
             setIsModalOpen(false);
             window.location.reload(); // Simple reload to refresh data
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('¿Estás seguro de eliminar esta ubicación?')) return;
+    const openDeleteModal = (id: string) => {
+        setIdToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!idToDelete) return;
         setIsLoading(true);
-        const res = await deleteUbicacion(id);
+        const res = await deleteUbicacion(idToDelete);
         setIsLoading(false);
+        setIsDeleteModalOpen(false);
+
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success('Ubicación eliminada');
             window.location.reload();
         }
     };
@@ -144,7 +158,7 @@ export default function UbicacionesClient({ initialUbicaciones }: { initialUbica
                                 <button onClick={() => handleOpenEdit(u)} className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600">
                                     <Edit2 className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => handleDelete(u.id)} className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-red-600">
+                                <button onClick={() => openDeleteModal(u.id)} className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-red-600">
                                     <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
@@ -253,6 +267,26 @@ export default function UbicacionesClient({ initialUbicaciones }: { initialUbica
                     </div>
                 </form>
             </Modal>
-        </div>
+
+            {/* Modal Confirmar Eliminación */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Eliminar Ubicación">
+                <div className="space-y-4">
+                    <div className="bg-red-50 border border-red-100 text-red-800 p-4 rounded-lg flex items-start gap-3">
+                        <Trash2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <h4 className="font-semibold text-sm">¿Estás seguro de eliminar esta ubicación?</h4>
+                            <p className="text-sm opacity-90 mt-1">Se borrará permanentemente. Si está vinculada a viajes, podría fallar.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleConfirmDelete} isLoading={isLoading} className="bg-red-600 hover:bg-red-700 text-white">
+                            Sí, Eliminar
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+        </div >
     );
 }

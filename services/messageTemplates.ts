@@ -36,7 +36,7 @@ export const Templates = {
       action: {
         buttons: [
           { type: "reply", reply: { id: "ACCION_SOLICITAR", title: "🚛 Solicitar Carga" } },
-          { type: "reply", reply: { id: "ACCION_VER_VIAJES", title: "📋 Mis Solicitudes" } },
+          { type: "reply", reply: { id: "ACCION_VER_VIAJES", title: "📋 Ver mis viajes" } },
           { type: "reply", reply: { id: "ACCION_PERFIL", title: "⚙️ Mi Perfil" } }
         ]
       }
@@ -236,6 +236,73 @@ export const Templates = {
       `⚖️ *Peso:* ${viaje.toneladas.toString().replace('.', ',')} TN\n` +
       `📍 *Ruta:* ${origen} -> ${destino}\n` +
       `\nEscribí *"Ver Cargas"* para postularte.`;
+
+    return {
+      type: "text",
+      text: { body: texto }
+    };
+  },
+
+  historialViajes: (viajes: any[]) => {
+    if (!viajes || viajes.length === 0) {
+      return {
+        type: "text",
+        text: { body: "📋 No tenés viajes realizados todavía." }
+      };
+    }
+
+    const rows = viajes.map((v: any) => {
+      const fecha = new Date(v.fecha_carga).toLocaleDateString('es-AR');
+      const origen = v.origen?.nombre || 'Origen';
+      const destino = v.destino?.nombre || 'Destino';
+      const estado = v.estado.replace('_', ' ');
+
+      return {
+        id: `VER_VIAJE_${v.id}`,
+        title: `${fecha} - ${v.cereal || 'Carga'}`,
+        description: `${origen} -> ${destino} (${estado})`.substring(0, 72)
+      };
+    });
+
+
+    return {
+      type: "interactive",
+      interactive: {
+        type: "list",
+        header: { type: "text", text: "Historial de Viajes" },
+        body: { text: "Tus últimos viajes solicitados:" },
+        action: {
+          button: "Ver Viajes",
+          sections: [
+            {
+              title: "Últimos 5",
+              rows: rows
+            }
+          ]
+        }
+      }
+    };
+  },
+
+  detalleViaje: (viaje: any) => {
+    const fecha = new Date(viaje.fecha_carga).toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const texto =
+      `*Detalle del Viaje*\n\n` +
+      `Fecha: ${fecha}\n` +
+      `Cereal: ${viaje.cereal}\n` +
+      `Toneladas: ${viaje.toneladas}\n` +
+      `Origen: ${viaje.origen?.nombre || '?'}\n` +
+      `Destino: ${viaje.destino?.nombre || '?'}\n` +
+      `Estado: ${viaje.estado.replace(/_/g, ' ')}\n` +
+      (viaje.tarifa_base ? `*Tarifa:* $${viaje.tarifa_base}\n` : '') +
+      `\nEscribí *Menú* para volver.`;
 
     return {
       type: "text",

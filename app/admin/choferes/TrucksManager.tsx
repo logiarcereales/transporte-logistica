@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trash2, Plus, Truck } from 'lucide-react';
+import { Trash2, Plus, Truck, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { addCamionToChofer, deleteCamion } from '../actions';
+import { toast } from 'sonner';
+import { Modal } from '@/components/ui/Modal';
 
 interface Camion {
     id: string;
     patente: string;
     tipo_camion: string;
     nombre_fantasia?: string;
-    link_id?: string; // ID de la relación transportista_camion
+    link_id?: string;
 }
 
 interface TrucksManagerProps {
@@ -25,6 +27,10 @@ export default function TrucksManager({ choferId, initialTrucks, onUpdate }: Tru
     const [isAdding, setIsAdding] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    // Modal Delete State for Truck
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [truckToDelete, setTruckToDelete] = useState<{ id: string, linkId?: string } | null>(null);
+
     const handleAddTruck = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsLoading(true);
@@ -33,26 +39,34 @@ export default function TrucksManager({ choferId, initialTrucks, onUpdate }: Tru
         const res = await addCamionToChofer(choferId, formData);
 
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success('Camión agregado');
             setIsAdding(false);
             onUpdate(); // Recargar datos
         }
         setIsLoading(false);
     };
 
-    const handleDeleteTruck = async (camionId: string, linkId?: string) => {
-        if (!confirm('¿Seguro que querés eliminar este camión?')) return;
+    const openDeleteTruckModal = (camionId: string, linkId?: string) => {
+        setTruckToDelete({ id: camionId, linkId });
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleConfirmDeleteTruck = async () => {
+        if (!truckToDelete) return;
 
         setIsLoading(true);
-        const res = await deleteCamion(camionId, linkId);
+        const res = await deleteCamion(truckToDelete.id, truckToDelete.linkId);
+        setIsLoading(false);
+        setIsDeleteModalOpen(false);
 
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success('Camión eliminado');
             onUpdate();
         }
-        setIsLoading(false);
     };
 
     return (
@@ -107,7 +121,7 @@ export default function TrucksManager({ choferId, initialTrucks, onUpdate }: Tru
                                 <p className="text-xs text-gray-500 capitalize">{truck.tipo_camion.replace(/_/g, ' ').toLowerCase()}</p>
                             </div>
                             <button
-                                onClick={() => handleDeleteTruck(truck.id, truck.link_id)}
+                                onClick={() => openDeleteTruckModal(truck.id, truck.link_id)}
                                 className="text-gray-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-md transition-colors"
                                 title="Eliminar camión"
                             >
@@ -117,6 +131,26 @@ export default function TrucksManager({ choferId, initialTrucks, onUpdate }: Tru
                     ))
                 )}
             </div>
+
+            {/* Modal Confirm Delete Truck */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Eliminar Camión">
+                <div className="space-y-4">
+                    <div className="bg-red-50 border border-red-100 text-red-800 p-4 rounded-lg flex items-start gap-3">
+                        <Trash2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <h4 className="font-semibold text-sm">¿Estás seguro de eliminar este camión?</h4>
+                            <p className="text-sm opacity-90 mt-1">Se borrará de la flota del chofer.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleConfirmDeleteTruck} isLoading={isLoading} className="bg-red-600 hover:bg-red-700 text-white">
+                            Sí, Eliminar
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

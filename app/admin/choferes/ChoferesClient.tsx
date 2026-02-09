@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { createChofer, updateChofer, deleteChofer } from '../actions';
 import TrucksManager from './TrucksManager';
+import { toast } from 'sonner';
 
 interface Chofer {
     id: string;
@@ -24,6 +25,10 @@ export default function ChoferesClient({ initialChoferes }: { initialChoferes: a
     const [currentChofer, setCurrentChofer] = useState<Partial<Chofer>>({});
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Modal Delete State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
     // Filtrado simple
     const filteredChoferes = choferes.filter((c) =>
@@ -49,17 +54,22 @@ export default function ChoferesClient({ initialChoferes }: { initialChoferes: a
         setIsTrucksModalOpen(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('¿Estás seguro de eliminar este chofer?')) return;
+    const openDeleteModal = (id: string) => {
+        setIdToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
 
+    const handleConfirmDelete = async () => {
+        if (!idToDelete) return;
         setIsLoading(true);
-        const res = await deleteChofer(id);
+        const res = await deleteChofer(idToDelete);
         setIsLoading(false);
+        setIsDeleteModalOpen(false);
 
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
-            // Optimistic update or refresh
+            toast.success('Chofer eliminado');
             window.location.reload();
         }
     };
@@ -79,8 +89,9 @@ export default function ChoferesClient({ initialChoferes }: { initialChoferes: a
         setIsLoading(false);
 
         if (res?.error) {
-            alert(res.error);
+            toast.error(res.error);
         } else {
+            toast.success(isEditMode ? 'Chofer actualizado' : 'Chofer creado');
             setIsModalOpen(false);
             window.location.reload();
         }
@@ -168,7 +179,7 @@ export default function ChoferesClient({ initialChoferes }: { initialChoferes: a
                                                 <Truck className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(chofer.id)}
+                                                onClick={() => openDeleteModal(chofer.id)}
                                                 className="text-gray-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -265,6 +276,26 @@ export default function ChoferesClient({ initialChoferes }: { initialChoferes: a
                         onUpdate={() => window.location.reload()}
                     />
                 )}
+            </Modal>
+
+            {/* Modal Confirm Delete */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Eliminar Chofer">
+                <div className="space-y-4">
+                    <div className="bg-red-50 border border-red-100 text-red-800 p-4 rounded-lg flex items-start gap-3">
+                        <Trash2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <h4 className="font-semibold text-sm">¿Estás seguro de eliminar este chofer?</h4>
+                            <p className="text-sm opacity-90 mt-1">Se borrará su perfil y la asignación de sus camiones.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleConfirmDelete} isLoading={isLoading} className="bg-red-600 hover:bg-red-700 text-white">
+                            Sí, Eliminar
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </div >
     );
