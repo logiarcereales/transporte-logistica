@@ -1,0 +1,13 @@
+[
+  "id",
+  "id_camionero",
+  "id_productor",
+  "cereal",
+  "id_origen",
+  "id_destino",
+  "toneladas",
+  "tarifa_base",
+  "estado",
+  "fecha_carga",
+  "id_transportista"
+]

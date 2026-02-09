@@ -1,0 +1,29 @@
+{
+  "camion": [
+    "id",
+    "patente",
+    "patente_acoplado",
+    "toneladas",
+    "tipo_camion"
+  ],
+  "transportista_camion": [
+    "id",
+    "id_perfil",
+    "id_camion",
+    "nombre_fantasia"
+  ],
+  "viaje": [
+    "id",
+    "id_camionero",
+    "id_productor",
+    "cereal",
+    "id_origen",
+    "id_destino",
+    "toneladas",
+    "tarifa_base",
+    "estado",
+    "fecha_carga",
+    "id_transportista"
+  ],
+  "oferta": "No data"
+}
