@@ -143,7 +143,7 @@ export default function ProductoresClient({ initialProductores, allUbicaciones }
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Gestión de Productores</h2>
-                    <p className="text-gray-500">Administra a los clientes generadores de carga</p>
+                    <p className="text-gray-500">Administrá a los clientes generadores de carga</p>
                 </div>
                 <Button onClick={handleOpenCreate} icon={<Plus className="w-4 h-4" />} className="bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500">
                     Nuevo Productor
