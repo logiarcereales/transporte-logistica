@@ -100,8 +100,8 @@ export default function TarifasClient({ initialTarifas }: { initialTarifas: any[
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Tarifario</h2>
-                    <p className="text-gray-500">Configurá los precios por tonelada según distancias</p>
+                    <h2 className="text-2xl font-bold text-gray-900">¡Tarifario!</h2>
+                    <p className="text-gray-500">Configurá los precios por tonelada según las distancias</p>
                 </div>
                 <Button onClick={handleOpenCreate} icon={<Plus className="w-4 h-4" />} className="bg-emerald-600 hover:bg-emerald-700">
                     Nueva Tarifa
