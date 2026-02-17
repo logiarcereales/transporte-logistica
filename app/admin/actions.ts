@@ -252,9 +252,17 @@ export async function assignDriver(viajeId: string, choferId: string) {
 }
 
 export async function updateTripStatus(viajeId: string, nuevoEstado: string) {
+    // Prepare update data
+    const updateData: any = { estado: nuevoEstado };
+
+    // If changing to CARGADO and fecha_carga is not set, set it to now
+    if (nuevoEstado === 'CARGADO') {
+        updateData.fecha_carga = new Date().toISOString();
+    }
+
     const { error } = await supabaseAdmin
         .from('viaje')
-        .update({ estado: nuevoEstado })
+        .update(updateData)
         .eq('id', viajeId);
 
     if (error) {
@@ -262,7 +270,6 @@ export async function updateTripStatus(viajeId: string, nuevoEstado: string) {
         return { error: "Error al actualizar el estado." };
     }
 
-    revalidatePath('/admin/viajes');
     revalidatePath('/admin/viajes');
     return { success: true };
 }
@@ -287,7 +294,6 @@ export async function updateTripTariff(viajeId: string, nuevaTarifa: number) {
 export async function createViaje(formData: FormData) {
     const cereal = formData.get('cereal') as string;
     const toneladas = parseFloat(formData.get('toneladas') as string);
-    const fechaCarga = formData.get('fecha_carga') as string;
     const idProductor = formData.get('id_productor') as string;
     const idOrigen = formData.get('id_origen') as string;
     const idDestino = formData.get('id_destino') as string;
@@ -298,12 +304,12 @@ export async function createViaje(formData: FormData) {
         .insert([{
             cereal,
             toneladas,
-            fecha_carga: fechaCarga,
             id_productor: idProductor,
             id_origen: idOrigen,
             id_destino: idDestino,
             tarifa_base: tarifaBase,
             estado: 'SOLICITADO'
+            // fecha_carga will be set automatically when estado changes to CARGADO
         }]);
 
     if (error) {

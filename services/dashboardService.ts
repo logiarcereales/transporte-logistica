@@ -6,7 +6,7 @@ export async function getDashboardStats() {
         .from('viaje')
         .select('id, estado, toneladas, cereal, fecha_carga')
         .neq('estado', 'CANCELADO')
-        .neq('estado', 'COMPLETADO');
+        .neq('estado', 'FINALIZADO');
 
     if (errorActive) throw errorActive;
 
@@ -21,7 +21,7 @@ export async function getDashboardStats() {
     // KPIs
     const totalActive = activeTrips?.length || 0;
     const pendingAssignment = activeTrips?.filter(t => t.estado === 'SOLICITADO').length || 0;
-    const tripsInProgress = activeTrips?.filter(t => t.estado === 'EN_CURSO').length || 0;
+    const tripsInProgress = activeTrips?.filter(t => t.estado === 'EN_VIAJE').length || 0;
 
     // Total Volume (All time)
     const totalTons = allTrips?.reduce((acc, curr) => acc + (curr.toneladas || 0), 0) || 0;

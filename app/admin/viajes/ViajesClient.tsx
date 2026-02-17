@@ -237,8 +237,11 @@ export default function ViajesClient({
         switch (estado) {
             case 'SOLICITADO': return 'text-yellow-700 border-yellow-200 bg-yellow-50';
             case 'ASIGNADO': return 'text-blue-700 border-blue-200 bg-blue-50';
-            case 'EN_CURSO': return 'text-purple-700 border-purple-200 bg-purple-50';
-            case 'COMPLETADO': return 'text-green-700 border-green-200 bg-green-50';
+            case 'CARGADO': return 'text-indigo-700 border-indigo-200 bg-indigo-50';
+            case 'EN_VIAJE': return 'text-purple-700 border-purple-200 bg-purple-50';
+            case 'EN_DESTINO': return 'text-cyan-700 border-cyan-200 bg-cyan-50';
+            case 'DESCARGADO': return 'text-teal-700 border-teal-200 bg-teal-50';
+            case 'FINALIZADO': return 'text-green-700 border-green-200 bg-green-50';
             case 'CANCELADO': return 'text-red-700 border-red-200 bg-red-50';
             default: return 'text-gray-700 border-gray-200 bg-gray-50';
         }
@@ -278,8 +281,11 @@ export default function ViajesClient({
                         <option value="TODOS">Todos los Estados</option>
                         <option value="SOLICITADO">Solicitado</option>
                         <option value="ASIGNADO">Asignado</option>
-                        <option value="EN_CURSO">En Curso</option>
-                        <option value="COMPLETADO">Completado</option>
+                        <option value="CARGADO">Cargado</option>
+                        <option value="EN_VIAJE">En Viaje</option>
+                        <option value="EN_DESTINO">En Destino</option>
+                        <option value="DESCARGADO">Descargado</option>
+                        <option value="FINALIZADO">Finalizado</option>
                         <option value="CANCELADO">Cancelado</option>
                     </select>
 
@@ -432,8 +438,11 @@ export default function ViajesClient({
                         <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20" value={statusToUpdate} onChange={(e) => setStatusToUpdate(e.target.value)}>
                             <option value="SOLICITADO">SOLICITADO</option>
                             <option value="ASIGNADO">ASIGNADO</option>
-                            <option value="EN_CURSO">EN_CURSO</option>
-                            <option value="COMPLETADO">COMPLETADO</option>
+                            <option value="CARGADO">CARGADO</option>
+                            <option value="EN_VIAJE">EN_VIAJE</option>
+                            <option value="EN_DESTINO">EN_DESTINO</option>
+                            <option value="DESCARGADO">DESCARGADO</option>
+                            <option value="FINALIZADO">FINALIZADO</option>
                             <option value="CANCELADO">CANCELADO</option>
                         </select>
                     </div>
@@ -473,11 +482,6 @@ export default function ViajesClient({
                             <label className="block text-sm font-medium text-gray-700">Toneladas</label>
                             <input type="number" name="toneladas" required min="1" step="0.1" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
                         </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Fecha de Carga</label>
-                        <input type="date" name="fecha_carga" required className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
