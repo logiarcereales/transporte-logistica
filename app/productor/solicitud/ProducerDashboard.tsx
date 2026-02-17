@@ -1,91 +1,128 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
+'use client';
+
+import { ArrowRight, Truck, MapPin, Clock, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface ProducerDashboardProps {
     producerName: string;
     onNavigate: (view: 'NEW_REQUEST' | 'TRACKING' | 'HISTORY') => void;
+    onLogout: () => void;
 }
 
-export default function ProducerDashboard({ producerName, onNavigate }: ProducerDashboardProps) {
-    return (
-        <div className="min-h-screen bg-slate-50 font-sans">
-            {/* Header */}
-            <div className="bg-[#2F5C3B] text-white py-8 px-6 rounded-b-[40px] shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 right-0 opacity-10 transform translate-x-10 -translate-y-10">
-                    <svg className="w-64 h-64" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                </div>
+export default function ProducerDashboard({ producerName, onNavigate, onLogout }: ProducerDashboardProps) {
+    const [greeting, setGreeting] = useState('Buen día');
 
-                <div className="max-w-md mx-auto relative z-10">
-                    <div className="flex items-center gap-4 mb-2">
-                        <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-xl border border-white/30">
+    useEffect(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) setGreeting('Buen día');
+        else if (hour < 20) setGreeting('Buenas tardes');
+        else setGreeting('Buenas noches');
+    }, []);
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 font-sans">
+            {/* Subtle texture overlay */}
+            <div className="fixed inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #0f172a 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
+
+            <div className="relative z-10 max-w-4xl mx-auto px-6 py-8">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-12">
+                    <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white font-bold text-lg shadow-md">
                             {producerName.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <p className="text-green-100 text-sm font-medium">Bienvenido back,</p>
-                            <h1 className="text-2xl font-bold tracking-tight">{producerName}</h1>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Productor</p>
+                            <p className="text-base font-semibold text-slate-900">{producerName}</p>
                         </div>
                     </div>
+                    <button
+                        onClick={onLogout}
+                        className="h-10 px-4 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all text-sm font-medium shadow-sm flex items-center gap-2"
+                        title="Cerrar sesión"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        <span className="hidden sm:inline">Salir</span>
+                    </button>
                 </div>
-            </div>
 
-            {/* Menu Grid */}
-            <div className="max-w-md mx-auto px-6 -mt-6 relative z-20 space-y-4">
+                {/* Hero Greeting */}
+                <div className="mb-10">
+                    <h1 className="text-4xl font-bold text-slate-900 mb-2">{greeting}, {producerName.split(' ')[0]}</h1>
+                    <p className="text-lg text-slate-500">¿Qué necesitás hacer hoy?</p>
+                </div>
 
-                {/* Solicitar Carga - Featured Card */}
-                <button
-                    onClick={() => onNavigate('NEW_REQUEST')}
-                    className="w-full bg-white p-6 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-gray-100 flex items-center justify-between group hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                >
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center text-[#2F5C3B] group-hover:bg-[#2F5C3B] group-hover:text-white transition-colors duration-300">
-                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                {/* Action Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    {/* Nueva Solicitud - Primary */}
+                    <button
+                        onClick={() => onNavigate('NEW_REQUEST')}
+                        className="group text-left bg-white border border-slate-200 rounded-xl p-6 hover:border-slate-300 hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className="w-14 h-14 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+                                <Truck className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-slate-900 mb-1">Solicitar Carga</h3>
+                                <p className="text-sm text-slate-500">Crear nueva solicitud de transporte</p>
+                                <div className="mt-4 inline-flex items-center text-sm font-medium text-emerald-600 group-hover:text-emerald-700">
+                                    Comenzar
+                                    <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-left">
-                            <h3 className="text-lg font-bold text-gray-900">Solicitar Carga</h3>
-                            <p className="text-sm text-gray-400 font-medium">Nuevo pedido de camiones</p>
-                        </div>
-                    </div>
-                    <div className="h-8 w-8 rounded-full border border-gray-100 flex items-center justify-center text-gray-300 group-hover:border-[#2F5C3B] group-hover:text-[#2F5C3B] transition-colors">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                    </div>
-                </button>
+                    </button>
 
-                <div className="grid grid-cols-2 gap-4">
-                    {/* Estado de Viaje */}
+                    {/* Seguimiento */}
                     <button
                         onClick={() => onNavigate('TRACKING')}
-                        className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-3 hover:shadow-md hover:-translate-y-1 transition-all duration-300 h-40"
+                        className="group text-left bg-white border border-slate-200 rounded-xl p-6 hover:border-slate-300 hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
                     >
-                        <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        </div>
-                        <div className="text-center">
-                            <h3 className="font-bold text-gray-900">Seguimiento</h3>
-                            <p className="text-xs text-gray-400">Por CTG / Carta de Porte</p>
+                        <div className="flex items-start gap-4">
+                            <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-slate-200 transition-colors">
+                                <MapPin className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-slate-900 mb-1">Seguimiento</h3>
+                                <p className="text-sm text-slate-500">Rastrear viaje por CTG / Carta de Porte</p>
+                                <div className="mt-4 inline-flex items-center text-sm font-medium text-slate-700 group-hover:text-slate-900">
+                                    Buscar
+                                    <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </div>
                         </div>
                     </button>
 
-                    {/* Mis Viajes */}
+                    {/* Historial */}
                     <button
                         onClick={() => onNavigate('HISTORY')}
-                        className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-3 hover:shadow-md hover:-translate-y-1 transition-all duration-300 h-40"
+                        className="group text-left bg-white border border-slate-200 rounded-xl p-6 hover:border-slate-300 hover:shadow-lg transition-all duration-200 hover:-translate-y-1 md:col-span-2"
                     >
-                        <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                        </div>
-                        <div className="text-center">
-                            <h3 className="font-bold text-gray-900">Historial</h3>
-                            <p className="text-xs text-gray-400">Mis últimos viajes</p>
+                        <div className="flex items-start gap-4">
+                            <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-slate-200 transition-colors">
+                                <Clock className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-slate-900 mb-1">Historial de Viajes</h3>
+                                <p className="text-sm text-slate-500">Ver mis últimos viajes y estadísticas</p>
+                                <div className="mt-4 inline-flex items-center text-sm font-medium text-slate-700 group-hover:text-slate-900">
+                                    Ver historial
+                                    <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </div>
                         </div>
                     </button>
                 </div>
 
-                {/* Soporte / Ayuda */}
-                <button className="w-full bg-white/50 p-4 rounded-2xl border border-dashed border-gray-300 flex items-center justify-center gap-2 text-gray-500 hover:bg-white hover:text-[#2F5C3B] hover:border-[#2F5C3B] transition-all duration-300">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                    <span className="font-semibold text-sm">Necesito Ayuda</span>
-                </button>
-
+                {/* Footer */}
+                <div className="mt-16 pt-6 border-t border-slate-200">
+                    <div className="flex items-center justify-center gap-2">
+                        <img src="/logiar-logo.png" alt="LogiAr" className="h-6" />
+                        <span className="text-slate-400 text-sm">·</span>
+                        <p className="text-sm text-slate-500">Plataforma de Transporte Agrícola</p>
+                    </div>
+                </div>
             </div>
         </div>
     );

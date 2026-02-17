@@ -5,19 +5,28 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Professional Custom Icon (SVG)
-const customIcon = L.divIcon({
-    className: 'custom-icon',
-    html: `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#2F5C3B" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10 drop-shadow-md">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-      <circle cx="12" cy="10" r="3" fill="#F4C430" stroke="none"></circle>
-    </svg>
-  `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40],
-});
+// Professional Custom Icon (SVG) - Will be created on client side only
+let customIcon: L.DivIcon | null = null;
+
+const getCustomIcon = () => {
+    if (typeof window === 'undefined') return null;
+
+    if (!customIcon) {
+        customIcon = L.divIcon({
+            className: 'custom-icon',
+            html: `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#2F5C3B" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10 drop-shadow-md">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3" fill="#F4C430" stroke="none"></circle>
+            </svg>
+          `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40],
+        });
+    }
+    return customIcon;
+};
 
 // Custom Search Component inside Map
 function SearchControl({ onSelect }: { onSelect: (pos: { lat: number, lng: number }) => void }) {
@@ -69,8 +78,17 @@ function SearchControl({ onSelect }: { onSelect: (pos: { lat: number, lng: numbe
         setQuery(result.display_name.split(',')[0]); // Keep short name
     };
 
+    const divRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (divRef.current) {
+            L.DomEvent.disableClickPropagation(divRef.current);
+            L.DomEvent.disableScrollPropagation(divRef.current);
+        }
+    }, []);
+
     return (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-[90%] sm:w-[400px] z-[1000]">
+        <div ref={divRef} className="absolute top-4 left-1/2 transform -translate-x-1/2 w-[90%] sm:w-[400px] z-[1000]">
             <div className="relative shadow-lg rounded-full bg-white transition-all duration-300 hover:shadow-xl">
                 <div className="flex items-center px-4 py-3">
                     <span className="text-gray-400 mr-3">
@@ -134,7 +152,7 @@ function LocationMarker({ position, setPosition }: { position: { lat: number, ln
     });
 
     return position === null ? null : (
-        <Marker position={position} icon={customIcon}></Marker>
+        <Marker position={position} icon={getCustomIcon()!}></Marker>
     );
 }
 
@@ -200,7 +218,7 @@ export default function MapPicker({ onLocationSelect, initialLocation }: MapPick
     return (
         <div
             ref={containerRef}
-            className={`h-full w-full bg-gray-50 relative transition-all duration-500 ease-in-out group ${!isActive ? 'grayscale hover:grayscale-0' : ''}`}
+            className="h-full w-full bg-gray-50 relative group rounded-2xl overflow-hidden"
             onClick={() => setIsActive(true)}
             onTouchStart={() => setIsActive(true)}
         >
@@ -215,7 +233,7 @@ export default function MapPicker({ onLocationSelect, initialLocation }: MapPick
                 zoomControl={false} // We can add custom zoom control if needed, or leave default
                 style={{ height: '100%', width: '100%' }}
             >
-                {/* CartoDB Voyager: Clean, modern, professional map style */}
+                {/* CartoDB Voyager: Clean, modern, professional map style (Silver) */}
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -228,9 +246,10 @@ export default function MapPicker({ onLocationSelect, initialLocation }: MapPick
 
             {/* Overlay Hint */}
             {!isActive && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1000] bg-white/10 group-hover:bg-transparent transition-colors">
-                    <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Tocá para interactuar
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1000] bg-black/5 group-hover:bg-transparent transition-colors">
+                    <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-mouse-pointer-click"><path d="m9 9 5 12 1.8-5.2L21 14Z" /><path d="M7.2 2.2 8 5.1" /><path d="m5.1 8-2.9-.8" /><path d="M14 4.1 12 6" /><path d="m6 12-1.9 2" /></svg>
+                        Interactuar
                     </div>
                 </div>
             )}

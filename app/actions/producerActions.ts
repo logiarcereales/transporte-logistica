@@ -227,19 +227,73 @@ export async function createLoadRequest(formData: any) {
 export async function searchTripByCtg(ctg: string) {
     const { data: viaje, error } = await supabase
         .from('viaje')
-        .select(`
-            *,
-            origen:ubicacion!id_origen(nombre),
-            destino:ubicacion!id_destino(nombre),
-            chofer:perfil!id_camionero(nombre, telefono),
-            camion:camion(patente)
-        `)
-        .eq('ctg', ctg) // Searching by CTG
+        .select('*')
+        .eq('ctg', ctg)
         .single();
 
-    if (error || !viaje) return null;
+    if (error || !viaje) {
+        console.log('Trip not found for CTG:', ctg, error);
+        return null;
+    }
 
-    return viaje;
+    console.log('Found trip for CTG:', ctg);
+
+    // Enrich with location, driver, and truck data
+    let origen = null;
+    if (viaje.id_origen) {
+        const { data: origenData } = await supabase
+            .from('ubicacion')
+            .select('nombre, latitud, longitud')
+            .eq('id', viaje.id_origen)
+            .single();
+        origen = origenData;
+    }
+
+    let destino = null;
+    if (viaje.id_destino) {
+        const { data: destinoData } = await supabase
+            .from('ubicacion')
+            .select('nombre, latitud, longitud')
+            .eq('id', viaje.id_destino)
+            .single();
+        destino = destinoData;
+    }
+
+    let chofer = null;
+    if (viaje.id_camionero) {
+        const { data: choferData } = await supabase
+            .from('perfil')
+            .select('nombre, telefono')
+            .eq('id', viaje.id_camionero)
+            .single();
+        chofer = choferData;
+    }
+
+    let camion = null;
+    if (viaje.id_transportista) {
+        const { data: transportistaData } = await supabase
+            .from('transportista_camion')
+            .select('id_camion')
+            .eq('id', viaje.id_transportista)
+            .single();
+
+        if (transportistaData?.id_camion) {
+            const { data: camionData } = await supabase
+                .from('camion')
+                .select('patente, tipo_camion')
+                .eq('id', transportistaData.id_camion)
+                .single();
+            camion = camionData;
+        }
+    }
+
+    return {
+        ...viaje,
+        origen,
+        destino,
+        chofer,
+        camion
+    };
 }
 
 export async function getProducerHistory(telefono: string) {
@@ -259,8 +313,9 @@ export async function getProducerHistory(telefono: string) {
             destino:ubicacion!id_destino(nombre)
         `)
         .eq('id_productor', perfil.id)
+        .in('estado', ['FINALIZADO', 'CANCELADO'])  // Only show completed or cancelled trips
         .order('fecha_carga', { ascending: false })
-        .limit(10);
+        .limit(50);  // Increased limit for better stats
 
     if (error) {
         console.error('Error fetching history:', error);
@@ -268,4 +323,93 @@ export async function getProducerHistory(telefono: string) {
     }
 
     return { success: true, data: viajes };
+}
+
+export async function getActiveTrips(telefono: string) {
+    const perfil = await checkProducer(telefono);
+    if (!perfil) return { error: 'Productor no encontrado' };
+
+    console.log('Fetching active trips for producer:', perfil.id);
+
+    // Fetch all trips that are in progress (from SOLICITADO to DESCARGADO)
+    const { data: viajes, error } = await supabase
+        .from('viaje')
+        .select('*')
+        .eq('id_productor', perfil.id)
+        .in('estado', ['SOLICITADO', 'ASIGNADO', 'CARGADO', 'EN_VIAJE', 'EN_DESTINO', 'DESCARGADO'])
+        .order('fecha_carga', { ascending: false });
+
+    if (error) {
+        console.error('Supabase error fetching active trips:', error);
+        return { error: `Error al obtener viajes activos: ${error.message}` };
+    }
+
+    console.log('Found active trips:', viajes?.length || 0);
+
+    // Enrich trips with location, driver, and truck data
+    const enrichedTrips = await Promise.all(
+        (viajes || []).map(async (viaje) => {
+            // Fetch origen
+            let origen = null;
+            if (viaje.id_origen) {
+                const { data: origenData } = await supabase
+                    .from('ubicacion')
+                    .select('nombre, latitud, longitud')
+                    .eq('id', viaje.id_origen)
+                    .single();
+                origen = origenData;
+            }
+
+            // Fetch destino
+            let destino = null;
+            if (viaje.id_destino) {
+                const { data: destinoData } = await supabase
+                    .from('ubicacion')
+                    .select('nombre, latitud, longitud')
+                    .eq('id', viaje.id_destino)
+                    .single();
+                destino = destinoData;
+            }
+
+            // Fetch chofer
+            let chofer = null;
+            if (viaje.id_camionero) {
+                const { data: choferData } = await supabase
+                    .from('perfil')
+                    .select('nombre, telefono')
+                    .eq('id', viaje.id_camionero)
+                    .single();
+                chofer = choferData;
+            }
+
+            // Fetch camion - need to get it through transportista_camion if id_transportista exists
+            let camion = null;
+            if (viaje.id_transportista) {
+                const { data: transportistaData } = await supabase
+                    .from('transportista_camion')
+                    .select('id_camion')
+                    .eq('id', viaje.id_transportista)
+                    .single();
+
+                if (transportistaData?.id_camion) {
+                    const { data: camionData } = await supabase
+                        .from('camion')
+                        .select('patente, tipo_camion')
+                        .eq('id', transportistaData.id_camion)
+                        .single();
+                    camion = camionData;
+                }
+            }
+
+            return {
+                ...viaje,
+                origen,
+                destino,
+                chofer,
+                camion
+            };
+        })
+    );
+
+    return { success: true, data: enrichedTrips };
 }

@@ -6,31 +6,58 @@ import { Button } from '@/components/ui/Button';
 import { createLoadRequest, checkProducer } from '@/app/actions/producerActions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import {
+    Wheat,
+    Leaf,
+    Sun,
+    Sprout,
+    MapPin,
+    Truck,
+    ArrowRight,
+    CheckCircle2,
+    AlertCircle,
+    Weight,
+    Package,
+    Navigation,
+    Calendar,
+    Search
+} from 'lucide-react';
 
 import ProducerDashboard from './ProducerDashboard';
 import TrackingView from './TrackingView';
-
 import HistoryView from './HistoryView';
 
 // Dynamically import MapPicker to avoid SSR issues with Leaflet
 const MapPicker = dynamic(() => import('@/components/ui/MapPicker'), {
     ssr: false,
-    loading: () => <div className="h-[300px] w-full bg-gray-100 animate-pulse rounded-lg flex items-center justify-center text-gray-500">Cargando Mapa...</div>
+    loading: () => (
+        <div className="h-[300px] w-full bg-slate-50 animate-pulse flex flex-col items-center justify-center text-slate-400 gap-2">
+            <MapPin className="w-8 h-8 opacity-20" />
+            <span className="text-sm font-medium">Cargando Mapa...</span>
+        </div>
+    )
 });
 
-type ViewState = 'PHONE' | 'DASHBOARD' | 'NEW_REQUEST' | 'TRACKING' | 'HISTORY';
+type ViewState = 'PHONE' | 'DASHBOARD' | 'NEW_REQUEST' | 'CONFIRM_REQUEST' | 'TRACKING' | 'HISTORY';
+
+const CEREAL_OPTIONS = [
+    { id: 'MAIZ', label: 'Maíz', icon: Wheat },
+    { id: 'SOJA', label: 'Soja', icon: Leaf },
+    { id: 'TRIGO', label: 'Trigo', icon: Wheat },
+    { id: 'GIRASOL', label: 'Girasol', icon: Sun },
+    { id: 'SORGO', label: 'Sorgo', icon: Sprout },
+    { id: 'OTROS', label: 'Otros', icon: Package },
+];
 
 export default function LoadRequestForm({ initialPhone }: { initialPhone?: string }) {
     const searchParams = useSearchParams();
-
-    // Si viene telefono por URL (del redirect), usalo.
     const urlPhone = searchParams.get('telefono') || initialPhone || '';
+    const router = useRouter();
 
     const [view, setView] = useState<ViewState>('PHONE');
     const [phone, setPhone] = useState(urlPhone);
     const [loading, setLoading] = useState(false);
     const [producerName, setProducerName] = useState('');
-    const router = useRouter();
 
     // Form Stats
     const [formData, setFormData] = useState({
@@ -41,10 +68,20 @@ export default function LoadRequestForm({ initialPhone }: { initialPhone?: strin
     });
     const [origen, setOrigen] = useState<{ lat: number; lng: number } | null>(null);
 
+    // Session persistence with localStorage
     useEffect(() => {
-        if (urlPhone) {
-            // Si ya tenemos telefono, intentamos verificarlo automágicamente o pre-llenamos
-            // verifyPhone(urlPhone); // Opcional: auto-login
+        // Try to restore session from localStorage first
+        const savedPhone = localStorage.getItem('producer_phone');
+        const savedName = localStorage.getItem('producer_name');
+
+        if (savedPhone && savedName) {
+            // Restore from localStorage
+            setPhone(savedPhone);
+            setProducerName(savedName);
+            setView('DASHBOARD');
+        } else if (urlPhone) {
+            // If URL has phone, verify it
+            verifyPhone(urlPhone);
         }
     }, [urlPhone]);
 
@@ -54,10 +91,14 @@ export default function LoadRequestForm({ initialPhone }: { initialPhone?: strin
             const producer = await checkProducer(msgPhone);
             if (producer) {
                 setProducerName(producer.nombre);
+                setPhone(msgPhone);
                 setView('DASHBOARD');
+
+                // Save to localStorage for session persistence
+                localStorage.setItem('producer_phone', msgPhone);
+                localStorage.setItem('producer_name', producer.nombre);
             } else {
-                toast.error('No encontramos un productor con ese teléfono. Redirigiendo a registro...');
-                // Redirect to register with phone pre-filled
+                toast.error('No encontramos un productor con ese teléfono.');
                 setTimeout(() => {
                     const params = new URLSearchParams();
                     params.set('telefono', msgPhone);
@@ -77,11 +118,28 @@ export default function LoadRequestForm({ initialPhone }: { initialPhone?: strin
         verifyPhone(phone);
     };
 
-    const handleFormSubmit = async (e: React.FormEvent) => {
+    const handleContinueToConfirm = (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!formData.cereal) {
+            toast.error('Selecciona un tipo de cereal.');
+            return;
+        }
+        if (!formData.cantidad_camiones || !formData.toneladas) {
+            toast.error('Completa la información de carga.');
+            return;
+        }
         if (!origen) {
             toast.error('Por favor selecciona un origen en el mapa.');
+            return;
+        }
+
+        setView('CONFIRM_REQUEST');
+    };
+
+    const handleFinalSubmit = async () => {
+        if (!origen) {
+            toast.error('Error: ubicación no definida');
             return;
         }
 
@@ -102,7 +160,6 @@ export default function LoadRequestForm({ initialPhone }: { initialPhone?: strin
                 toast.error(result.error);
             } else {
                 toast.success('Solicitud enviada con éxito!');
-                // Reset form and go back to dashboard
                 setFormData({
                     cantidad_camiones: '',
                     toneladas: '',
@@ -124,56 +181,66 @@ export default function LoadRequestForm({ initialPhone }: { initialPhone?: strin
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    // Helper for selecting cereal
+    const selectCereal = (cerealId: string) => {
+        setFormData(prev => ({ ...prev, cereal: cerealId }));
+    };
+
     // RENDER LOGIC
 
     if (view === 'PHONE') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 font-sans relative overflow-hidden">
-                {/* Background decoration */}
-                <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-[#2F5C3B] to-slate-50 opacity-10"></div>
-
-                <div className="max-w-md w-full bg-white p-8 sm:p-12 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-100 relative z-10">
-                    <div className="text-center mb-10">
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-[#2F5C3B] mb-6 shadow-lg shadow-green-900/20 transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                            {/* Placeholder Logo for LogiAr */}
-                            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4 font-sans">
+                <div className="max-w-md w-full bg-white p-8 sm:p-10 rounded-lg shadow-sm border border-slate-200">
+                    <div className="text-center mb-8">
+                        {/* LogiAr Logo */}
+                        <div className="mb-6">
+                            <img
+                                src="/logiar-logo.png"
+                                alt="LogiAr"
+                                className="h-16 mx-auto"
+                            />
                         </div>
-                        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">LogiAr</h2>
-                        <p className="text-gray-500 mt-3 font-medium">Gestión inteligente de cargas</p>
+                        <h2 className="text-2xl font-semibold text-slate-900 mb-2">Acceso de Productores</h2>
+                        <p className="text-sm text-slate-500">Ingrese su número de celular para continuar</p>
                     </div>
-                    <form onSubmit={handlePhoneSubmit} className="space-y-8">
+                    <form onSubmit={handlePhoneSubmit} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Tu número de WhatsApp</label>
-                            <div className="relative group">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Número de Celular</label>
+                            <div className="relative">
                                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                                    <span className="text-gray-400 font-bold text-lg group-focus-within:text-[#2F5C3B] transition-colors">+54 9</span>
+                                    <span className="text-slate-500 font-medium">+54</span>
                                 </div>
                                 <input
                                     type="tel"
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                                    placeholder="358 412 3456"
+                                    placeholder="358 123 4567"
                                     required
-                                    className="block w-full py-4 pl-20 pr-4 bg-gray-50 border-2 border-transparent rounded-2xl text-gray-900 font-bold text-lg placeholder-gray-300 focus:bg-white focus:border-[#2F5C3B]/20 focus:ring-4 focus:ring-[#2F5C3B]/10 outline-none transition-all shadow-inner"
+                                    className="block w-full h-12 pl-16 pr-4 bg-white border border-slate-300 rounded-md text-slate-900 font-medium placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none transition-all"
                                 />
                             </div>
                         </div>
 
-                        <Button type="submit" isLoading={loading} className="w-full h-14 text-lg font-bold bg-[#2F5C3B] hover:bg-[#1a3522] text-white shadow-xl shadow-green-900/20 hover:shadow-2xl hover:shadow-green-900/30 hover:-translate-y-0.5 transition-all rounded-2xl">
+                        <Button type="submit" isLoading={loading} className="w-full h-12 text-base font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-md shadow-sm transition-colors">
                             Ingresar
+                            <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
-                        <div className="text-center">
-                            <a href="/productor/registro" className="text-sm font-semibold text-gray-400 hover:text-[#2F5C3B] transition-colors">
-                                No tengo cuenta
-                            </a>
-                        </div>
                     </form>
                 </div>
             </div>
         );
     }
+
+    // Logout handler - clear localStorage and return to login
+    const handleLogout = () => {
+        localStorage.removeItem('producer_phone');
+        localStorage.removeItem('producer_name');
+        setPhone('');
+        setProducerName('');
+        setView('PHONE');
+        toast.success('Sesión cerrada');
+    };
 
     if (view === 'DASHBOARD') {
         return (
@@ -182,233 +249,308 @@ export default function LoadRequestForm({ initialPhone }: { initialPhone?: strin
                 onNavigate={(target) => {
                     setView(target);
                 }}
+                onLogout={handleLogout}
             />
         );
     }
 
     if (view === 'TRACKING') {
-        return <TrackingView onBack={() => setView('DASHBOARD')} />;
+        return <TrackingView phone={phone} onBack={() => setView('DASHBOARD')} />;
     }
 
     if (view === 'HISTORY') {
         return <HistoryView phone={phone} onBack={() => setView('DASHBOARD')} />;
     }
 
-    // view === 'NEW_REQUEST'
-    return (
-        <div className="min-h-screen bg-[#F3F4F6] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 font-sans selection:bg-[#F4C430]/30 animate-in fade-in slide-in-from-right-8">
-            <div className="max-w-5xl mx-auto">
+    if (view === 'CONFIRM_REQUEST') {
+        return (
+            <div className="min-h-screen bg-[#F8FAFC] font-sans flex items-center justify-center p-4">
+                <div className="max-w-lg w-full">
+                    {/* Simplified Confirmation View */}
+                    <div className="bg-white p-6 sm:p-8 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-slate-200 relative overflow-hidden">
 
-                {/* Back Button */}
-                <button onClick={() => setView('DASHBOARD')} className="mb-6 flex items-center text-gray-500 hover:text-gray-900 font-bold transition-colors">
-                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
-                    Volver al inicio
-                </button>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-                    {/* Left Column: Form (8 cols) */}
-                    <div className="lg:col-span-8 space-y-4 sm:space-y-6">
-                        {/* Header Card */}
-                        <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-sm border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div>
-                                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">Solicitar Transporte</h1>
-                                <p className="text-sm sm:text-base text-gray-500 font-medium">Completa los detalles del viaje.</p>
+                        <div className="text-center mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-md bg-emerald-50 mb-4 animate-in zoom-in duration-300">
+                                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
                             </div>
-                            <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-gray-100 self-start sm:self-auto">
-                                <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#2F5C3B] font-bold text-sm border border-gray-100 shadow-sm">
-                                    {producerName.charAt(0).toUpperCase()}
+                            <h2 className="text-2xl font-extrabold text-slate-900">Confirmar Solicitud</h2>
+                            <p className="text-slate-500 font-medium">Revisa los detalles antes de enviar.</p>
+                        </div>
+
+                        <div className="space-y-6 relative z-10">
+                            {/* Metric Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-slate-50 border border-slate-100 rounded-none p-4">
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Cereal</p>
+                                    <p className="text-lg font-bold text-slate-900 truncate">
+                                        {formData.cereal ? CEREAL_OPTIONS.find(c => c.id === formData.cereal)?.label : '---'}
+                                    </p>
                                 </div>
-                                <span className="text-sm font-semibold text-gray-700">{producerName}</span>
+                                <div className="bg-slate-50 border border-slate-100 rounded-none p-4">
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Carga Estimada</p>
+                                    <p className="text-lg font-bold text-slate-900">
+                                        {formData.toneladas || 0} <span className="text-sm font-semibold text-slate-400">TN</span>
+                                    </p>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 rounded-none p-4 col-span-2 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Logística Requeria</p>
+                                        <p className="text-lg font-bold text-slate-900">
+                                            {formData.cantidad_camiones || 0} <span className="text-sm font-semibold text-slate-400">Camiones</span>
+                                        </p>
+                                    </div>
+                                    <Truck className="w-8 h-8 text-slate-200" />
+                                </div>
+                            </div>
+
+                            {/* Destination Route */}
+                            <div className="bg-slate-50 border border-slate-100 rounded-none p-5">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex flex-col items-center mt-1">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]"></div>
+                                        <div className="w-0.5 h-10 bg-slate-300 my-1"></div>
+                                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]"></div>
+                                    </div>
+                                    <div className="flex-1 space-y-6">
+                                        <div>
+                                            <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide mb-0.5">Origen</p>
+                                            <p className="text-sm font-bold text-slate-700 line-clamp-1">
+                                                {origen ? 'Ubicación seleccionada en mapa' : 'Sin seleccionar'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-amber-600 font-bold uppercase tracking-wide mb-0.5">Destino</p>
+                                            <p className="text-sm font-bold text-slate-700 line-clamp-1">
+                                                {formData.destino || 'Sin definir'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <form onSubmit={handleFormSubmit} className="space-y-4 sm:space-y-6">
-
-                            {/* Card: Carga */}
-                            <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#2F5C3B] flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg shadow-green-900/20">1</div>
-                                    <h3 className="text-lg sm:text-xl font-bold text-gray-800">¿Qué transportamos?</h3>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-                                    <div className="col-span-1 sm:col-span-2 space-y-2">
-                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Producto</label>
-                                        <div className="relative">
-                                            <select
-                                                name="cereal"
-                                                value={formData.cereal}
-                                                onChange={handleChange}
-                                                className="block w-full h-12 sm:h-14 pl-5 pr-10 bg-slate-50 border border-slate-200 rounded-2xl text-gray-900 font-bold focus:bg-white focus:border-[#2F5C3B] focus:ring-4 focus:ring-[#2F5C3B]/10 outline-none transition-all appearance-none cursor-pointer text-sm sm:text-base"
-                                                required
-                                            >
-                                                <option value="">Seleccionar Cereal...</option>
-                                                <option value="MAIZ">Maíz</option>
-                                                <option value="SOJA">Soja</option>
-                                                <option value="TRIGO">Trigo</option>
-                                                <option value="GIRASOL">Girasol</option>
-                                                <option value="SORGO">Sorgo</option>
-                                                <option value="OTROS">Otros</option>
-                                            </select>
-                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Camiones</label>
-                                        <input
-                                            name="cantidad_camiones"
-                                            type="number"
-                                            min="1"
-                                            value={formData.cantidad_camiones}
-                                            onChange={handleChange}
-                                            required
-                                            className="block w-full h-12 sm:h-14 px-5 bg-slate-50 border border-slate-200 rounded-2xl text-gray-900 font-bold focus:bg-white focus:border-[#2F5C3B] focus:ring-4 focus:ring-[#2F5C3B]/10 outline-none transition-all placeholder-gray-400 text-sm sm:text-base"
-                                            placeholder="Ej: 2"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Toneladas</label>
-                                        <input
-                                            name="toneladas"
-                                            type="number"
-                                            step="0.1"
-                                            value={formData.toneladas}
-                                            onChange={handleChange}
-                                            required
-                                            className="block w-full h-12 sm:h-14 px-5 bg-slate-50 border border-slate-200 rounded-2xl text-gray-900 font-bold focus:bg-white focus:border-[#2F5C3B] focus:ring-4 focus:ring-[#2F5C3B]/10 outline-none transition-all placeholder-gray-400 text-sm sm:text-base"
-                                            placeholder="Ej: 60"
-                                        />
-                                    </div>
-                                </div>
+                        <div className="mt-8 relative z-10">
+                            <div className="bg-amber-50 border border-amber-100 p-4 mb-4 flex gap-3">
+                                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-xs text-amber-800 font-medium leading-relaxed">
+                                    <strong>Atención:</strong> Verifica la información antes de enviar. Al confirmar, se notificará automáticamente a los camioneros disponibles en la zona.
+                                </p>
                             </div>
 
-                            {/* Card: Ruta */}
-                            <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#2F5C3B] flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg shadow-green-900/20">2</div>
-                                    <h3 className="text-lg sm:text-xl font-bold text-gray-800">Hoja de Ruta</h3>
-                                </div>
-
-                                <div className="space-y-6 sm:space-y-8">
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center px-1">
-                                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Origen</label>
-                                            {origen ? (
-                                                <span className="flex items-center text-[#2F5C3B] text-xs font-bold bg-green-50 px-2 py-1 rounded-md animate-pulse">
-                                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path></svg>
-                                                    Definido
-                                                </span>
-                                            ) : (
-                                                <span className="text-red-400 text-xs font-bold bg-red-50 px-2 py-1 rounded-md">Requerido</span>
-                                            )}
-                                        </div>
-                                        <div className={`h-[300px] sm:h-[350px] w-full rounded-2xl overflow-hidden relative transition-all duration-300 ${origen ? 'ring-2 ring-[#2F5C3B] ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-300'}`}>
-                                            <MapPicker onLocationSelect={(loc) => setOrigen(loc)} />
-                                            {!origen && (
-                                                <div className="absolute inset-x-0 bottom-6 flex justify-center pointer-events-none z-[400]">
-                                                    <span className="bg-black/70 backdrop-blur text-white px-4 py-2 rounded-full text-xs sm:text-sm font-medium shadow-lg animate-bounce">
-                                                        📍 Selecciona en el mapa
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Destino Final</label>
-                                        <div className="relative">
-                                            <span className="absolute inset-y-0 left-0 flex items-center pl-5 text-gray-400">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                                            </span>
-                                            <input
-                                                name="destino"
-                                                value={formData.destino}
-                                                onChange={handleChange}
-                                                placeholder="Ej: Puerto General San Martín"
-                                                required
-                                                className="block w-full h-12 sm:h-14 pl-12 pr-5 bg-slate-50 border border-slate-200 rounded-2xl text-gray-900 font-bold focus:bg-white focus:border-[#2F5C3B] focus:ring-4 focus:ring-[#2F5C3B]/10 outline-none transition-all placeholder-gray-400 text-sm sm:text-base"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-
-                    {/* Right Column: Sticky Summary & Action (4 cols) */}
-                    <div className="lg:col-span-4 space-y-6">
-
-                        {/* Ticket/Resumen Card */}
-                        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 sticky top-6">
-
-                            <h3 className="text-lg font-bold mb-6 text-gray-900 flex items-center">
-                                <span className="bg-green-50 p-2 rounded-lg mr-3 text-[#2F5C3B]">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                                </span>
-                                Resumen
-                            </h3>
-
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-baseline border-b border-gray-50 pb-4">
-                                    <span className="text-xs sm:text-sm font-medium text-gray-400 uppercase tracking-wide">Carga</span>
-                                    <div className="text-right">
-                                        <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                                            {formData.toneladas || 0} <span className="text-xs sm:text-sm font-medium text-gray-400">TN</span>
-                                        </div>
-                                        <div className="text-xs sm:text-sm font-medium text-gray-500 mt-1">
-                                            {formData.cereal || "---"}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-between items-baseline border-b border-gray-50 pb-4">
-                                    <span className="text-xs sm:text-sm font-medium text-gray-400 uppercase tracking-wide">Logística</span>
-                                    <div className="text-right">
-                                        <div className="text-lg sm:text-xl font-bold text-gray-900">
-                                            {formData.cantidad_camiones || 0} <span className="text-xs sm:text-sm font-medium text-gray-400">Camiones</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-between items-start pt-2">
-                                    <span className="text-xs sm:text-sm font-medium text-gray-400 uppercase tracking-wide mt-1">Destino</span>
-                                    <div className="text-right max-w-[60%]">
-                                        <span className="text-sm sm:text-base font-bold text-gray-900 block truncate leading-tight">
-                                            {formData.destino || "A definir"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Submit Button */}
-                            <div className="mt-8">
+                            <div className="space-y-3">
                                 <button
-                                    onClick={handleFormSubmit}
+                                    onClick={handleFinalSubmit}
                                     disabled={loading}
-                                    className="w-full bg-[#2F5C3B] hover:bg-[#254a2f] text-white font-bold h-12 sm:h-14 rounded-xl shadow-lg shadow-green-900/10 hover:shadow-xl hover:shadow-green-900/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base"
+                                    className="w-full h-14 bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-lg shadow-lg shadow-slate-900/10 transition-all transform active:scale-[0.99] flex items-center justify-center gap-2"
                                 >
-                                    {loading ? (
-                                        <>Processing...</>
-                                    ) : (
+                                    {loading ? 'Procesando...' : (
                                         <>
-                                            CONFIRMAR
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                            Confirmar Solicitud
+                                            <ArrowRight className="w-5 h-5" />
                                         </>
                                     )}
                                 </button>
-                                <p className="text-center text-xs text-gray-400 mt-4 leading-relaxed px-4">
-                                    Al confirmar, aceptas los términos de servicio de LogiAr.
-                                </p>
+                                <button
+                                    onClick={() => setView('NEW_REQUEST')}
+                                    className="w-full h-12 text-slate-500 font-bold hover:text-slate-800 transition-colors"
+                                >
+                                    Volver y Editar
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        );
+    }
+
+    // view === 'NEW_REQUEST'
+    return (
+        <div className="min-h-screen bg-gradient-to-b from-[#F8FAFC] via-[#F1F5F9] to-[#E8EDF2] font-sans antialiased">
+            {/* Subtle grid texture */}
+            <div className="fixed inset-0 opacity-[0.4] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #cbd5e1 0.5px, transparent 0)', backgroundSize: '32px 32px' }}></div>
+
+            {/* Navbar */}
+            <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+                    <button onClick={() => setView('DASHBOARD')} className="flex items-center text-slate-400 hover:text-slate-800 font-medium transition-colors group gap-2">
+                        <ArrowRight className="w-4 h-4 rotate-180" />
+                        <span className="text-sm">Volver</span>
+                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="text-right hidden sm:block">
+                            <p className="text-[11px] text-slate-400 uppercase font-medium tracking-[0.15em]">Productor</p>
+                            <p className="text-sm font-semibold text-slate-800">{producerName}</p>
+                        </div>
+                        <div className="h-9 w-9 rounded-md bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                            {producerName.charAt(0).toUpperCase()}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                <div className="space-y-8">
+                    <div className="text-center sm:text-left">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Nueva Solicitud</h1>
+                        <p className="text-slate-500 mt-2 text-lg">Configura el transporte para tu carga.</p>
+                    </div>
+
+                    <form id="load-request-form" onSubmit={handleContinueToConfirm} className="space-y-8">
+
+                        {/* SECTION 1: Cereal Selection */}
+                        <section className="bg-white p-6 sm:p-7 border border-slate-200 rounded-lg">
+                            <div className="mb-5">
+                                <h3 className="text-base font-semibold text-slate-900 mb-1">Tipo de Cereal</h3>
+                                <p className="text-sm text-slate-500">Seleccione el producto a transportar</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                                {CEREAL_OPTIONS.map((option) => {
+                                    const isSelected = formData.cereal === option.id;
+                                    const Icon = option.icon;
+                                    return (
+                                        <button
+                                            key={option.id}
+                                            type="button"
+                                            onClick={() => selectCereal(option.id)}
+                                            className={`
+                                                    relative flex flex-col items-center justify-center p-4 border transition-all duration-150 h-24 group rounded-md
+                                                    ${isSelected
+                                                    ? `bg-slate-900 border-slate-900`
+                                                    : 'bg-white border-slate-200 hover:border-slate-400'
+                                                }
+                                                `}
+                                        >
+                                            {isSelected && (
+                                                <div className="absolute top-2 right-2 text-white">
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                </div>
+                                            )}
+                                            <Icon className={`w-6 h-6 mb-2 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                                            <span className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-slate-700'}`}>
+                                                {option.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </section>
+
+                        {/* SECTION 2: Capacity / Quantity */}
+                        {/* SECTION 2: Carga y Capacidad (Swapped order - Trucks First) */}
+                        <section className="bg-white p-6 sm:p-7 border border-slate-200 rounded-lg">
+                            <div className="mb-5">
+                                <h3 className="text-base font-semibold text-slate-900 mb-1">Capacidad y Carga</h3>
+                                <p className="text-sm text-slate-500">Especifique cantidad y tonelaje</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                {/* Trucks Input (First) */}
+                                <div className="space-y-3">
+                                    <label className="text-sm font-bold text-slate-700">Cantidad de Camiones</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <Truck className="w-5 h-5 text-slate-400" />
+                                        </div>
+                                        <input
+                                            type="number"
+                                            name="cantidad_camiones"
+                                            value={formData.cantidad_camiones}
+                                            onChange={handleChange}
+                                            placeholder="Ej. 2"
+                                            className="block w-full h-12 pl-12 pr-4 bg-white border border-slate-200 text-slate-900 font-medium focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 rounded-md outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Tonnage Input (Second, no slider) */}
+                                <div className="space-y-3">
+                                    <label className="text-sm font-bold text-slate-700">Toneladas estimadas</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <Weight className="w-5 h-5 text-slate-400" />
+                                        </div>
+                                        <input
+                                            type="number"
+                                            name="toneladas"
+                                            value={formData.toneladas}
+                                            onChange={handleChange}
+                                            placeholder="Ej. 60"
+                                            className="block w-full h-12 pl-12 pr-4 bg-white border border-slate-200 text-slate-900 font-medium focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 rounded-md outline-none transition-all"
+                                        />
+                                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                                            <span className="text-sm font-bold text-slate-400">TN</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* SECTION 3: Logistics (Map) */}
+                        <section className="bg-white p-6 sm:p-7 border border-slate-200 rounded-lg relative overflow-hidden">
+                            <div className="mb-5 relative z-10">
+                                <h3 className="text-base font-semibold text-slate-900 mb-1">Logística de Carga</h3>
+                                <p className="text-sm text-slate-500">Defina origen y destino</p>
+                            </div>
+
+                            <div className="space-y-6 relative z-10">
+                                {/* Map Container */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-sm font-bold text-slate-700">Punto de Origen</label>
+                                        {origen ? (
+                                            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                Ubicación definida
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-white px-2.5 py-1 rounded border border-slate-200">
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                                Seleccionar en mapa
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className={`h-[400px] w-full overflow-hidden relative border rounded-md transition-all duration-200 ${origen ? 'border-slate-400' : 'border-slate-200'}`}>
+                                        <MapPicker onLocationSelect={(loc) => setOrigen(loc)} />
+                                    </div>
+                                </div>
+
+                                {/* Destination Input */}
+                                <div className="pt-2">
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Destino Final</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <Navigation className="w-5 h-5 text-slate-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            name="destino"
+                                            value={formData.destino}
+                                            onChange={handleChange}
+                                            placeholder="Ingresa el puerto o acopio de destino..."
+                                            className="block w-full h-12 pl-12 pr-4 bg-white border border-slate-200 text-slate-900 font-medium focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 rounded-md outline-none transition-all placeholder:font-normal"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div className="pt-4">
+                            <button
+                                type="button"
+                                onClick={handleContinueToConfirm}
+                                className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-base rounded-md shadow-sm transition-colors flex items-center justify-center gap-2"
+                            >
+                                Solicitar Carga
+                                <ArrowRight className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </main >
+        </div >
     );
 }

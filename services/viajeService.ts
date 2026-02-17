@@ -7,7 +7,7 @@ export async function crearViajeVacio(productorId: string) {
     .from('viaje')
     .insert([{
       id_productor: productorId,
-      estado: 'EN_CURSO',
+      estado: 'EN_VIAJE',
       fecha_carga: new Date().toISOString()
     }])
     .select()
@@ -22,12 +22,12 @@ export async function crearViajeVacio(productorId: string) {
 
 // Busca el viaje actual en estado 'SOLICITADO' para este productor
 export async function obtenerViajeEnCurso(productorId: string) {
-  // console.log(`DEBUG: Buscando viaje EN_CURSO para productor ${productorId}`);
+  // console.log(`DEBUG: Buscando viaje EN_VIAJE para productor ${productorId}`);
   const { data, error } = await supabase
     .from('viaje')
     .select('*')
     .eq('id_productor', productorId)
-    .eq('estado', 'EN_CURSO')
+    .eq('estado', 'EN_VIAJE')
     .order('fecha_carga', { ascending: false })
     .limit(1)
     .single();
@@ -36,7 +36,7 @@ export async function obtenerViajeEnCurso(productorId: string) {
     console.error("Error buscando viaje en curso:", error);
   }
 
-  // if (!data) console.log(`DEBUG: No se encontró viaje EN_CURSO para ${productorId}`);
+  // if (!data) console.log(`DEBUG: No se encontró viaje EN_VIAJE para ${productorId}`);
   // else console.log(`DEBUG: Viaje encontrado: ${data.id}`);
 
   return data;
@@ -133,7 +133,7 @@ export async function obtenerHistorialViajes(productorId: string) {
       destino:ubicacion!id_destino(nombre)
     `)
     .eq('id_productor', productorId)
-    .neq('estado', 'EN_CURSO')
+    .neq('estado', 'EN_VIAJE')
     .order('fecha_carga', { ascending: false })
     .limit(5);
 
