@@ -52,7 +52,7 @@ export default function DashboardClient({
                         </div>
                     </Link>
 
-                    <Link href="/admin/viajes" className="group">
+                    <Link href="/admin/viajes?status=SOLICITADO" className="group">
                         <div className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm hover:shadow-md hover:border-amber-300 transition-all hover:-translate-y-0.5 bg-gradient-to-br from-white to-amber-50/30">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="p-2.5 bg-amber-100 text-amber-700 rounded-lg group-hover:bg-amber-200 transition-colors">

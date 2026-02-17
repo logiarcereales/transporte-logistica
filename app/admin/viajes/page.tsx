@@ -3,7 +3,7 @@ import { obtenerTodosLosCamioneros, obtenerTodosLosProductores, obtenerTodasLasU
 import { obtenerTarifas } from '@/app/admin/actions';
 import ViajesClient from './ViajesClient';
 
-export default async function ViajesPage() {
+export default async function ViajesPage({ searchParams }: { searchParams: { status?: string } }) {
     // 1. Obtener Viajes con relaciones
     const { data: viajes, error } = await supabaseAdmin
         .from('viaje')
@@ -37,6 +37,7 @@ export default async function ViajesPage() {
             productores={productores}
             ubicaciones={ubicaciones}
             tarifas={tarifas || []}
+            initialFilterStatus={searchParams?.status}
         />
     );
 }
