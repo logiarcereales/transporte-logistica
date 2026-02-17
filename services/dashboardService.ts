@@ -63,3 +63,29 @@ export async function getDashboardStats() {
         }
     };
 }
+
+export async function getRecentTrips(limit = 15) {
+    const { data: trips, error } = await supabase
+        .from('viaje')
+        .select(`
+            id,
+            ctg,
+            estado,
+            cereal,
+            toneladas,
+            fecha_carga,
+            productor:perfil!id_productor(nombre),
+            origen:ubicacion!id_origen(nombre),
+            destino:ubicacion!id_destino(nombre),
+            chofer:perfil!id_camionero(nombre)
+        `)
+        .order('fecha_carga', { ascending: false })
+        .limit(limit);
+
+    if (error) {
+        console.error('Error fetching recent trips:', error);
+        return [];
+    }
+
+    return trips || [];
+}

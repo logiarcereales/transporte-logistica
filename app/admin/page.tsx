@@ -1,12 +1,11 @@
-import { getDashboardStats } from '@/services/dashboardService';
-import { obtenerTodasLasUbicaciones } from '@/services/userService';
+import { getDashboardStats, getRecentTrips } from '@/services/dashboardService';
 import DashboardClient from './DashboardClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
     const stats = await getDashboardStats();
-    const ubicaciones = await obtenerTodasLasUbicaciones();
+    const recentTrips = await getRecentTrips(15);
 
-    return <DashboardClient stats={stats} ubicaciones={ubicaciones || []} />;
+    return <DashboardClient stats={stats} recentTrips={recentTrips} />;
 }
