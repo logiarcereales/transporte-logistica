@@ -18,8 +18,7 @@ export async function createChofer(formData: FormData) {
         .insert([{
             nombre,
             telefono,
-            cuit,
-            estado_conversacion: 'MENU_PRINCIPAL' // Default
+            cuit
         }])
         .select()
         .single();
@@ -116,8 +115,7 @@ export async function createProductor(formData: FormData) {
         .insert([{
             nombre,
             telefono,
-            cuit,
-            estado_conversacion: 'MENU_PRINCIPAL'
+            cuit
         }])
         .select()
         .single();

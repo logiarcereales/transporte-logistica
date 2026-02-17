@@ -36,6 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
 const QUICK_FILTERS = [
     { label: 'Todos', value: 'TODOS', count: 0 },
     { label: 'Pendientes', value: 'SOLICITADO', count: 0, highlight: true },
+    { label: 'Asignados', value: 'ASIGNADO', count: 0 },
     { label: 'En Curso', value: 'EN_VIAJE', count: 0 },
     { label: 'Completados', value: 'FINALIZADO', count: 0 },
 ];
@@ -60,6 +61,8 @@ export default function ViajesClient({
     const [filterStatus, setFilterStatus] = useState(initialFilterStatus || 'TODOS');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
 
     // Set filter from URL param on mount
     useEffect(() => {
@@ -118,7 +121,8 @@ export default function ViajesClient({
     const filteredViajes = viajes.filter((v) => {
         const matchesSearch =
             v.cereal?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            v.productor?.nombre?.toLowerCase().includes(searchTerm.toLowerCase());
+            v.productor?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            v.ctg?.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesStatus = filterStatus === 'TODOS' || v.estado === filterStatus;
 
@@ -145,6 +149,17 @@ export default function ViajesClient({
         ...filter,
         count: filter.value === 'TODOS' ? viajes.length : viajes.filter(v => v.estado === filter.value).length
     }));
+
+    // Pagination
+    const totalPages = Math.ceil(filteredViajes.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedViajes = filteredViajes.slice(startIndex, endIndex);
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterStatus, dateFrom, dateTo]);
 
     // Handlers
     const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -296,10 +311,10 @@ export default function ViajesClient({
                             key={filter.value}
                             onClick={() => setFilterStatus(filter.value)}
                             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${filterStatus === filter.value
-                                    ? filter.highlight
-                                        ? 'bg-amber-100 text-amber-700 border-2 border-amber-300 shadow-sm'
-                                        : 'bg-slate-900 text-white shadow-sm'
-                                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                ? filter.highlight
+                                    ? 'bg-amber-100 text-amber-700 border-2 border-amber-300 shadow-sm'
+                                    : 'bg-slate-900 text-white shadow-sm'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                                 }`}
                         >
                             {filter.label}
@@ -338,7 +353,7 @@ export default function ViajesClient({
                 {/* Results Count */}
                 <div className="flex items-center justify-between">
                     <p className="text-sm text-slate-600">
-                        Mostrando <span className="font-semibold text-slate-900">{filteredViajes.length}</span> viaje{filteredViajes.length !== 1 ? 's' : ''}
+                    Mostrando <span className="font-semibold text-slate-900">{filteredViajes.length}</span> viaje{filteredViajes.length !== 1 ? 's' : ''}
                     </p>
                     {(searchTerm || filterStatus !== 'TODOS' || dateFrom || dateTo) && (
                         <button
@@ -375,7 +390,7 @@ export default function ViajesClient({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {filteredViajes.map((viaje) => (
+                                {paginatedViajes.map((viaje) => (
                                     <tr key={viaje.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="py-3 px-4">
                                             {viaje.ctg ? (
@@ -482,7 +497,7 @@ export default function ViajesClient({
 
                     {/* Mobile Cards */}
                     <div className="lg:hidden divide-y divide-slate-100">
-                        {filteredViajes.map((viaje) => (
+                        {paginatedViajes.map((viaje) => (
                             <div key={viaje.id} className="p-4 space-y-3">
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
@@ -556,6 +571,62 @@ export default function ViajesClient({
                         </div>
                     )}
                 </div>
+
+                {/* Pagination Controls */}
+                {filteredViajes.length > ITEMS_PER_PAGE && (
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <p className="text-sm text-slate-600">
+                        Mostrando <span className="font-semibold text-slate-900">{startIndex + 1} </span>-<span className="font-semibold text-slate-900"> {Math.min(endIndex, filteredViajes.length)}</span> de <span className="font-semibold text-slate-900">{filteredViajes.length}</span> viajes
+                            </p>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white transition-all"
+                                >
+                                    Anterior
+                                </button>
+
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                                        // Show first page, last page, current page, and pages around current
+                                        const showPage = page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1);
+                                        const showEllipsis = (page === currentPage - 2 && currentPage > 3) || (page === currentPage + 2 && currentPage < totalPages - 2);
+
+                                        if (showEllipsis) {
+                                            return <span key={page} className="px-2 text-slate-400">...</span>;
+                                        }
+
+                                        if (!showPage) return null;
+
+                                        return (
+                                            <button
+                                                key={page}
+                                                onClick={() => setCurrentPage(page)}
+                                                className={`min-w-[32px] h-8 px-2 rounded-lg text-sm font-medium transition-all ${currentPage === page
+                                                    ? 'bg-emerald-600 text-white shadow-sm'
+                                                    : 'text-slate-600 hover:bg-slate-100'
+                                                    }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white transition-all"
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Modals */}

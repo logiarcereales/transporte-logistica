@@ -64,7 +64,7 @@ export async function getDashboardStats() {
     };
 }
 
-export async function getRecentTrips(limit = 15) {
+export async function getRecentTrips(limit = 5) {
     const { data: trips, error } = await supabase
         .from('viaje')
         .select(`

@@ -86,7 +86,7 @@ export default function DashboardClient({
                             </div>
                         </div>
                         <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Toneladas Totales</p>
-                        <h3 className="text-3xl font-bold text-slate-900">{kpis.totalTons.toLocaleString()}</h3>
+                        <h3 className="text-3xl font-bold text-slate-900">{Math.round(kpis.totalTons)}</h3>
                         <p className="text-xs text-slate-500 mt-1">Gestionadas</p>
                     </div>
                 </div>

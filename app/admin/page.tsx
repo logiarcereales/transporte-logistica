@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
     const stats = await getDashboardStats();
-    const recentTrips = await getRecentTrips(15);
+    const recentTrips = await getRecentTrips(5);
 
     return <DashboardClient stats={stats} recentTrips={recentTrips} />;
 }

@@ -24,8 +24,7 @@ export async function crearPerfilInicial(telefono: string) {
   const { data, error } = await supabase
     .from('perfil')
     .insert([{
-      telefono: telefono,
-      estado_conversacion: 'ESPERANDO_ROL'
+      telefono: telefono
     }])
     .select().single();
 
@@ -35,7 +34,7 @@ export async function crearPerfilInicial(telefono: string) {
 
 export async function actualizarPerfil(telefono: string, cambios: any) {
   // Filtramos solo los campos que existen en la tabla 'perfil'
-  const camposPerfil = ['nombre', 'apellido', 'telefono', 'cuit', 'estado_conversacion'];
+  const camposPerfil = ['nombre', 'apellido', 'telefono', 'cuit'];
   const datosParaActualizar: any = {};
 
   for (const key of Object.keys(cambios)) {
